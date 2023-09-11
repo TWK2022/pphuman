@@ -4,8 +4,8 @@
 >paddle官方PPHuman行人检测  
 >本项目将paddle官方相关代码进行了整理，方便快速简洁地使用
 ### 1，下载模型到本地
->PP-YOLOE-s(27M):https://bj.bcebos.com/v1/paddledet/models/pipeline/mot_ppyoloe_s_36e_pipeline.zip  
->PP-YOLOE-l(182M):https://bj.bcebos.com/v1/paddledet/models/pipeline/mot_ppyoloe_l_36e_pipeline.zip  
+>PP-YOLOE-s(27M)：https://bj.bcebos.com/v1/paddledet/models/pipeline/mot_ppyoloe_s_36e_pipeline.zip  
+>PP-YOLOE-l(182M)：https://bj.bcebos.com/v1/paddledet/models/pipeline/mot_ppyoloe_l_36e_pipeline.zip  
 ### 2，inference.py
 >运行模型，args中有详细设置
 ### 3，flask_start.py
