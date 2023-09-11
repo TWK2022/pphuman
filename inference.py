@@ -10,7 +10,7 @@ parser = argparse.ArgumentParser(description='|行人检测|')
 parser.add_argument('--model_path', default='model', type=str, help='|模型位置|')
 parser.add_argument('--device', default='cuda', type=str, help='|设备|')
 parser.add_argument('--threshold', default=0.8, type=float, help='|阈值|')
-args = parser.parse_args()
+args, _ = parser.parse_known_args()  # 防止传入参数冲突，替代args = parser.parse_args()
 args.device = 'cuda' if args.device.lower() in ['gpu', 'cuda'] else 'cpu'
 
 
