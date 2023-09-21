@@ -9,6 +9,7 @@ import numpy as np
 parser = argparse.ArgumentParser(description='|行人检测|')
 parser.add_argument('--model_path', default='model', type=str, help='|模型位置|')
 parser.add_argument('--device', default='cuda', type=str, help='|设备|')
+parser.add_argument('--draw', default=True, type=bool, help='|测试时可以启用画图|')
 parser.add_argument('--threshold', default=0.8, type=float, help='|阈值|')
 args, _ = parser.parse_known_args()  # 防止传入参数冲突，替代args = parser.parse_args()
 args.device = 'cuda' if args.device.lower() in ['gpu', 'cuda'] else 'cpu'
@@ -28,8 +29,8 @@ class recognition_class:
         else:
             config.disable_gpu()  # 使用cpu
             config.set_cpu_math_library_num_threads(1)  # 设置cpu线程数
-        config.disable_glog_info()  # disable print log when predict
-        config.enable_memory_optim()  # enable shared memory
+        config.disable_glog_info()  # 推理时不会输出log信息
+        config.enable_memory_optim()  # 可以分享内存
         config.switch_use_feed_fetch_ops(False)  # disable feed, fetch OP, needed by zero_copy_run
         self.model = paddle.inference.create_predictor(config)
         self.input_image = self.model.get_input_handle('image')  # 输入接口
@@ -47,11 +48,6 @@ class recognition_class:
         pred = pred[judge]
         return pred
 
-    def _draw(self, image, box_all):
-        for x1, y1, x2, y2 in box_all.astype(np.int32):
-            cv2.rectangle(image, (x1, y1), (x2, y2), color=(0, 255, 0), thickness=2)
-        return image
-
     def predict(self, image):  # image:BGR
         image_resize, scale_factor = self._image_deal(image)  # 图片处理
         self.input_image.copy_from_cpu(image_resize)  # 传入数据
@@ -61,32 +57,31 @@ class recognition_class:
         output_tensor = self.model.get_output_handle(output_name[0])  # 输出结果
         pred = output_tensor.copy_to_cpu()  # array([[类别，置信度，x1,y1,x2,y2],...]) 已经非极大值抑制和从高到低排好序
         pred_screen = self._screen(pred[0:10])  # 不超过10个人
-        image_draw = self._draw(image, pred_screen[:, 2:6])  # image和image_draw共用内存是一样的
-        return image_draw, pred_screen[:, 2:6]
+        return pred_screen[:, 2:6].astype(np.int32)
 
 
 class detection_class:
     def __init__(self, args):
         self.model = recognition_class(args)
+        self.draw = args.draw
+
+    def _draw(self, image, box_all):
+        for x1, y1, x2, y2 in box_all.astype(np.int32):
+            cv2.rectangle(image, (x1, y1), (x2, y2), color=(0, 255, 0), thickness=2)
+        return image
 
     def predict(self, image):  # image:BGR
-        image_draw, box_all = self.model.predict(image)
-        cv2.imwrite('draw.jpg', image_draw)
-        result = {'image_draw': image_draw, 'box_all': box_all.tolist()}
+        box_all = self.model.predict(image)
+        # 画图
+        if self.draw:
+            image_draw = self._draw(image, box_all)  # image和image_draw共用内存
+            cv2.imwrite(f'save.jpg', image_draw)
+        result = {'box_all': box_all.tolist()}
         return result
 
 
 if __name__ == '__main__':
-    image = cv2.imread('001.jpg')
+    image = cv2.imread('image/demo.jpg')
     detection = detection_class(args)
     result = detection.predict(image)
-    print(result.keys())
-    # input_name = predictor.get_input_names()  # ['image', 'scale_factor']
-    # input_image = predictor.get_input_handle('image')
-    # input_image.copy_from_cpu(image)
-    # input_scale_factor = predictor.get_input_handle('scale_factor')
-    # input_scale_factor.copy_from_cpu(scale_factor)
-    # predictor.run()
-    # output_name = predictor.get_output_names()
-    # output_tensor = predictor.get_output_handle(output_name[0])
-    # pred = output_tensor.copy_to_cpu()
+    print(result)
