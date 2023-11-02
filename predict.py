@@ -53,7 +53,7 @@ class recognition_class:
         pred = pred[judge]
         return pred
 
-    def predict(self, image):  # image:BGR
+    def predict(self, image):  # image:RGB
         image_resize, scale_factor = self._image_deal(image)  # 图片处理
         self.input_image.copy_from_cpu(image_resize)  # 传入数据
         self.input_scale_factor.copy_from_cpu(scale_factor)  # 传入数据
@@ -89,7 +89,7 @@ class reid_class:
         image = image.transpose(2, 0, 1)[np.newaxis].astype(np.float32)
         return image
 
-    def predict(self, image):  # image:BGR
+    def predict(self, image):  # image:RGB
         image = self._image_deal(image)  # 图片处理
         self.input_image.copy_from_cpu(image)  # 传入数据
         self.model.run()  # 模型推理
