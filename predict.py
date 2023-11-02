@@ -7,8 +7,9 @@ import numpy as np
 # -------------------------------------------------------------------------------------------------------------------- #
 # 设置
 parser = argparse.ArgumentParser(description='|行人检测|')
+parser.add_argument('--image_path', default='image/demo.jpg', type=str, help='|图片位置|')
 parser.add_argument('--model_path', default='model', type=str, help='|模型位置|')
-parser.add_argument('--device', default='cuda', type=str, help='|设备|')
+parser.add_argument('--device', default='cpu', type=str, help='|设备|')
 parser.add_argument('--threshold', default=0.8, type=float, help='|行人识别阈值，0.8为基准|')
 parser.add_argument('--reid', default=True, type=bool, help='|是否对检测到的行人进行特征提取和匹配，返回人物编号0、1、2...|')
 parser.add_argument('--reid_model_path', default='reid_model', type=str, help='|行人特征提取模型位置|')
@@ -42,7 +43,6 @@ class recognition_class:
         self.input_scale_factor = self.model.get_input_handle('scale_factor')
 
     def _image_deal(self, image):
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         h, w, _ = image.shape
         image = cv2.resize(image, (640, 640)).transpose(2, 0, 1)[np.newaxis].astype(np.float32)
         scale_factor = np.array([640 / h, 640 / w])[np.newaxis].astype(np.float32)
@@ -85,7 +85,6 @@ class reid_class:
         self.std = np.array([0.229, 0.224, 0.225])
 
     def _image_deal(self, image):
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         image = (image / 255 - self.mean) / self.std
         image = image.transpose(2, 0, 1)[np.newaxis].astype(np.float32)
         return image
@@ -104,7 +103,6 @@ class reid_class:
 class detection_class:
     def __init__(self, args):
         self.model1 = recognition_class(args)
-        self.draw = args.draw
         if args.reid:
             self.model2 = reid_class(args)
             self.reid = args.reid
@@ -142,32 +140,33 @@ class detection_class:
                 id = None
         return id
 
-    def _draw(self, image, box_all, id_list):
-        for (x1, y1, x2, y2), id in zip(box_all.astype(np.int32), id_list):
+    def draw(self, image, box_all, id_list):
+        for (x1, y1, x2, y2), id in zip(box_all, id_list):
             cv2.rectangle(image, (x1, y1), (x2, y2), color=(0, 255, 0), thickness=2)
             cv2.putText(image, f'id:{id}', (x1 + 5, y1 + 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
         return image
 
-    def predict(self, image):  # image:BGR
+    def predict(self, image):  # image:RGB
         # 行人检测
-        box_all = self.model1.predict(image)
+        box_list = self.model1.predict(image).astype(np.int32).tolist()
         # 行人身份识别
-        id_list = [None for _ in range(len(box_all))]  # 最小值从0开始
+        id_list = [None for _ in range(len(box_list))]  # 最小值从0开始
         if self.reid:
-            image_list = self._cut_image(image, box_all)  # 裁剪图片
+            image_list = self._cut_image(image, box_list)  # 裁剪图片
             for i, image_cut in enumerate(image_list):
                 feature = self.model2.predict(image_cut)
                 id_list[i] = self._feature_match(feature)
-        # 画图
-        if self.draw:
-            image_draw = self._draw(image, box_all, id_list)  # image和image_draw共用内存
-            cv2.imwrite(f'save.jpg', image_draw)
-        result = {'box_all': box_all.tolist(), 'id_list': id_list}
-        return result
+        return box_list, id_list
 
 
 if __name__ == '__main__':
-    image = cv2.imread('image/demo.jpg')
-    detection = detection_class(args)
-    result = detection.predict(image)
-    print(result)
+    image = cv2.imdecode(np.fromfile(args.image_path, dtype=np.uint8), cv2.IMREAD_COLOR)
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    model = detection_class(args)
+    box_list, id_list = model.predict(image)
+    # 画图
+    if args.draw:
+        image_draw = model.draw(image, box_list, id_list)  # image和image_draw共用内存
+        image_draw = cv2.cvtColor(image_draw, cv2.COLOR_BGR2RGB)
+        cv2.imwrite(f'save.jpg', image_draw)
+    print(box_list, id_list)
