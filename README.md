@@ -2,7 +2,7 @@
 >基于padddle官方项目整理：https://github.com/PaddlePaddle/PaddleDetection/blob/release/2.6/deploy/pipeline/docs/tutorials/pphuman_mot.md  
 >paddle官方PPHuman行人检测+特征匹配重识别(可选)  
 >本项目将paddle官方相关代码进行了整理，方便快速简洁地使用
-### 1，下载模型到本地
+### 1，环境
 >paddle库2.4.2：https://www.paddlepaddle.org.cn/install/old?docurl=/documentation/docs/zh/develop/install/pip/linux-pip.html
 >```
 >pip install numpy opencv-python -i https://pypi.tuna.tsinghua.edu.cn/simple
